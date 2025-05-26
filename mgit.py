@@ -16,6 +16,8 @@ def main(argv=sys.argv[1:]):
     print(args.command)
     match args.command:
         case "add": cmd_add(args)
+        case "rcomp": cmd_rcomp(args)
+        case "commit": cmd_commit(args)
         case _: print("Bad command.")
 
 
@@ -26,3 +28,21 @@ argsp.add_argument("path",
 
 def cmd_add(args):
     commands.git_add(args.path)
+
+argsp = subparsers.add_parser("rcomp")
+argsp.add_argument("path",
+                   nargs="?",
+                       default=".")
+
+def cmd_rcomp(args):
+    commands.read_hash(args.path)
+
+argsp = subparsers.add_parser("commit")
+argsp.add_argument("path",
+                   nargs="?",
+                   default=".")
+
+def cmd_commit(args):
+    commands.git_commit(args.path)
+
+

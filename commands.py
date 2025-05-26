@@ -63,10 +63,11 @@ def read_hash(file_path):
         bin_text = f.read()
     bytes_decompressed = zlib.decompress(bin_text)
 
+    print(bytes_decompressed.decode())
     return bytes_decompressed.decode()
 
 
-def create_tree(working_dir):
+def get_tree_quads(working_dir):
     hashes = []
     for item in os.listdir(working_dir):
         # temporary
@@ -75,7 +76,7 @@ def create_tree(working_dir):
         item = working_dir + item
         content = []
         if os.path.isdir(item):
-            tree_hashes = create_tree(item + "/")
+            tree_hashes = get_tree_quads(item + "/")
             for hash_obj in tree_hashes:
                 content.append(' '.join(hash_obj))
             tree_content = '\n'.join(content)
@@ -107,16 +108,15 @@ def get_index_content(working_dir):
             name = item.split("/")[-1]
             index_content.append(("100644", hash_file, "0", name))
         else:
-            i_cs = git_add(item + "/")
+            i_cs = get_index_content(item + "/")
             name = item.split("/")[-1]
             
-            if type(i_cs) == str:
-                index_content.append(("100644", i_cs.split(" ")[1], "0", name))
-            else:
-                for i_c in i_cs:
-                    name_temp = name + i_c[-1]
-                    index_content.append(("100644", i_c[1], "0", name_temp))
-
+#            if type(i_cs) == str:
+            #    index_content.append(("100644", i_cs.split(" ")[1], "0", name))
+           # else:
+            for i_c in i_cs:
+                name_temp = name + "/" + i_c[-1]
+                index_content.append(("100644", i_c[1], "0", name_temp))
     return index_content
 
 def git_add(working_dir):
@@ -127,4 +127,53 @@ def git_add(working_dir):
         index.append(' '.join(idx_line))
     index = '\n'.join(index)
 
-    return index
+    index_compressed = zlib.compress(index.encode())
+
+    with open("index", "wb") as f:
+        f.write(index_compressed)
+
+def create_tree_obj(tree_quads):
+    tree_string = ""
+    for idx, tree_quad in enumerate(tree_quads):
+        tree_string += ' '.join(tree_quad) 
+        if idx+1 != len(tree_quads):
+            tree_string += "\n"
+    tree_hash = create_hash_string(tree_string)
+
+    return tree_hash
+
+
+def git_commit(working_dir):
+    # First, i want to create a tree for each directory on my working dir
+    hashes = []
+    for item in os.listdir(working_dir):
+        # Dont wanna do anything with .git dir
+        if item == ".git":
+            continue
+        item = working_dir + item    
+
+        # CHANGE!! check in index if one blob is present inside a tree, only than
+        # create the tree
+        if os.path.isdir(item):
+            tree_quads = get_tree_quads(item + "/")
+            # Creating the tree object
+            tree_hash = create_tree_obj(tree_quads)
+            name = item.split("/")[-1]
+            hashes.append(("040000", "tree", tree_hash, name)) 
+
+    # Find blob hashes on index
+    index_string = read_hash("index")
+    index_list = index_string.split("\n")
+    for blob in index_list:
+        blob_list = blob.split(" ")
+        if "/" in blob_list[3]:
+            continue
+        blob_list_hash = blob_list[1]
+        blob_list_perm = blob_list[0]
+        blob_list_name = blob_list[3]
+
+        hashes.append((blob_list_perm, "blob", blob_list_hash, blob_list_name))
+
+    # Then, i want to create the commit tree
+    tree_hash = create_tree_obj(hashes)
+
