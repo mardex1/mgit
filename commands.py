@@ -177,3 +177,17 @@ def git_commit(working_dir):
     # Then, i want to create the commit tree
     tree_hash = create_tree_obj(hashes)
 
+def find_git_dir(path=None):
+    if path == "/":
+        Exception(".git directory not found")
+    elif path == None:
+        current_path = os.getcwd()
+    else:
+        current_path = path
+
+    for item in os.listdir(current_path):
+        if item == ".git":
+            return current_path + "/.git/" 
+    list_path = current_path.split("/")[:-1]
+    new_path = '/'.join(list_path)
+    return find_git_dir(new_path)
