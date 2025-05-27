@@ -33,7 +33,7 @@ argsp.add_argument("path",
                    default=".")
 
 def cmd_rcomp(args):
-    commands.read_hash(args.path)
+    print(commands.read_hash(args.path))
 
 argsp = subparsers.add_parser("commit")
 argsp.add_argument("-m",

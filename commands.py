@@ -45,7 +45,6 @@ def create_hash_string(text):
     with open(working_dir + "/.git/objects/" + hash_obj, 'wb') as f:
         f.write(bytes_compressed)
 
-    print(hash_obj)
     return hash_obj
     
 def create_hash_path(file_path):
@@ -80,7 +79,6 @@ def read_hash(file_path):
         bin_text = f.read()
     bytes_decompressed = zlib.decompress(bin_text)
 
-    print(bytes_decompressed.decode())
     return bytes_decompressed.decode()
 
 
@@ -221,18 +219,22 @@ def git_commit(commit_msg):
 
     commit_hash = create_hash_string(commit_info)
 
+
     filepath = working_dir + "/.git/logs/HEAD"  
 
     if not os.path.exists(filepath):
         parent = "0"*40
+        initial_flag = (" (initial)")
     else:
         # get last commit on refs/heads/main
         with open(working_dir + "/.git/refs/heads/main", "r") as f:
             parent = f.read()
+        initial_flag = ""
 
-    commit_info_split = commit_info.split("\n\n")[0]
-    aditional_info = "commit (initial): {commit_msg}"
-    full_text = parent + " " + commit_info_split + " " + aditional_info + "\n"
+    log_commit_msg = parent + " " + commit_hash
+    log_commit_msg += f" Mardem <mardemcastro123@gmail.com> {current_time} -0300 "
+    log_commit_msg += f"commit{initial_flag}: {commit_msg}\n\n"
+
 
     # Writing new commit
     with open(working_dir + "/.git/refs/heads/main", "w") as f:
@@ -240,9 +242,9 @@ def git_commit(commit_msg):
 
     # Logging it
     with open(working_dir + "/.git/logs/HEAD", "a") as f:
-        f.write(full_text)
+        f.write(log_commit_msg)
     with open(working_dir + "/.git/logs/refs/heads/main", "a") as f:
-        f.write(full_text)
+        f.write(log_commit_msg)
 
     return
 
