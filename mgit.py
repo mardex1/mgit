@@ -16,9 +16,10 @@ def main(argv=sys.argv[1:]):
     match args.command:
         case "add": cmd_add()
         case "init": cmd_init()
-        case "rcomp": cmd_rcomp(args)
+        case "cat-file": cmd_cat_file(args)
         case "commit": cmd_commit(args)
         case "fgit": cmd_fgit()
+        case "log": cmd_log()
         case _: print("Bad command.")
 
 
@@ -27,12 +28,12 @@ argsp = subparsers.add_parser("add")
 def cmd_add():
     commands.git_add()
 
-argsp = subparsers.add_parser("rcomp")
+argsp = subparsers.add_parser("cat-file")
 argsp.add_argument("path",
                    nargs="?",
                    default=".")
 
-def cmd_rcomp(args):
+def cmd_cat_file(args):
     print(commands.read_hash(args.path))
 
 argsp = subparsers.add_parser("commit")
@@ -51,3 +52,9 @@ argsp = subparsers.add_parser("init")
 
 def cmd_init():
     commands.git_init()
+
+
+argsp = subparsers.add_parser("log")
+
+def cmd_log():
+    print(commands.git_log())

@@ -211,17 +211,7 @@ def git_commit(commit_msg):
             dot_idx = idx
     current_time = current_time[slice(0, dot_idx)]
 
-    # CHANGE!! going to set values manually, of the author, commiter and timestamp
-    commit_info = "tree " + tree_hash + "\n"
-    commit_info += f"author Mardem <mardemcastro123@gmail.com> {current_time} -0300\n"
-    commit_info += f"commiter Mardem <mardemcastro123@gmail.com> {current_time} -0300\n\n"
-    commit_info += commit_msg
-
-    commit_hash = create_hash_string(commit_info)
-
-
     filepath = working_dir + "/.git/logs/HEAD"  
-
     if not os.path.exists(filepath):
         parent = "0"*40
         initial_flag = (" (initial)")
@@ -231,9 +221,19 @@ def git_commit(commit_msg):
             parent = f.read()
         initial_flag = ""
 
+    # CHANGE!! going to set values manually, of the author, commiter and timestamp
+    commit_info = "tree " + tree_hash + "\n"
+    if initial_flag == "":
+        commit_info += f"parent {parent}\n"
+    commit_info += f"author Mardem <mardemcastro123@gmail.com> {current_time} -0300\n"
+    commit_info += f"commiter Mardem <mardemcastro123@gmail.com> {current_time} -0300\n\n"
+    commit_info += commit_msg
+
+    commit_hash = create_hash_string(commit_info)
+
     log_commit_msg = parent + " " + commit_hash
     log_commit_msg += f" Mardem <mardemcastro123@gmail.com> {current_time} -0300 "
-    log_commit_msg += f"commit{initial_flag}: {commit_msg}\n\n"
+    log_commit_msg += f"commit{initial_flag}: {commit_msg}\n"
 
 
     # Writing new commit
@@ -263,3 +263,57 @@ def find_git_dir(path=None):
     list_path = current_path.split("/")[:-1]
     new_path = '/'.join(list_path)
     return find_git_dir(new_path)
+
+
+def git_log():
+    # i need every commit hash, name and email of the author, timestamp
+    # in UNIX (convert to normal time, Day of the week - month - day - hour:min:sec - year)
+    # -0300 and the message
+
+    # Searching for the git dir
+    working_dir = find_git_dir()
+    if working_dir == None:
+        print(".git directory not found")
+        return None
+    
+    with open(working_dir + "/.git/refs/heads/main", "r") as f:
+        commit_hash = f.read()
+
+    log_string = ""
+    is_first = True
+    while(True):
+        last_commit_info = read_hash(working_dir + "/.git/objects/" + commit_hash) 
+
+        lci_list = last_commit_info.split("\n")
+        author_date_info = lci_list[2]
+        msg = lci_list[-1]
+
+        log_string += format_log(commit_hash, author_date_info, msg, is_first)
+        is_first = False
+        # This means we reached the first commit
+        if len(lci_list) < 6:
+            break
+        else:
+            commit_hash = lci_list[1].split(" ")[-1]
+
+    return log_string
+
+
+def format_log(commit_hash, author_date_info, msg, is_first):
+    date = author_date_info.split(" ")[-2:]
+    author = author_date_info.split(" ")[1:-2]
+
+    readable_time = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(int(date[0])))
+    time_zone = date[1]
+
+    if is_first:
+        commit_line = f"\033[33mcommit {commit_hash} (\033[1;36mHEAD\033[0m \033[33m->\033[0m \033[1;32mmain\033[0m\033[33m)\033[0m\n"
+    else:
+        commit_line = f"\033[33mcommit {commit_hash}\033[0m\n"
+    author_line = f"Author:\t{' '.join(author)}\n"
+    date_line = f"Date:\t{readable_time} {time_zone}\n"
+    msg_line = f"\n\t{msg}\n"
+
+    full_text = commit_line + author_line + date_line + msg_line
+
+    return full_text
