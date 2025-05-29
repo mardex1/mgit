@@ -319,7 +319,9 @@ def format_log(commit_hash, author_date_info, msg, is_first):
 
     return full_text
 
-def git_checkout(commit):
+def git_checkout_c(commit, working_dir):
+
+    # Checking if commit exists
     log_string = git_log()    
     if commit in log_string:
         print("Commit found!")
@@ -327,18 +329,14 @@ def git_checkout(commit):
         print("Commit doesn't exist, failed")
         return None
 
-    # Searching for the git dir
-    working_dir = find_git_dir()
-    if working_dir == None:
-        print(".git directory not found")
-        return None
-
     # Checking if the commit i wanna checkout to is the commit im on
     with open(working_dir + "/.git/HEAD", "r") as f:
         head = f.read()
 
-    msg = log_string.split("\n\t")[-1]
-    print(f"HEAD is now at {commit} {msg}")
+    if head == commit:
+        msg = log_string.split("\n\t")[-1]
+        print(f"HEAD is now at {commit} {msg}")
+        return
 
     clear_directory(working_dir)
 
@@ -348,6 +346,30 @@ def git_checkout(commit):
     tree_info = read_hash(working_dir + "/.git/objects/" + tree_hash)
 
     reconstruct_dir(tree_info, working_dir)
+
+    with open(working_dir + "/.git/HEAD", "w") as f:
+        f.write(commit)
+
+def git_checkout_b(branch, working_dir):
+    # Checking if branch exists
+    path_refs = os.path.join(working_dir, ".git/", "refs/heads/")
+    commit_info = None
+    for filepath in os.listdir(path_refs):
+        if branch == filepath:
+            with open(os.path.join(path_refs, branch), "r") as f:
+                branch_latest_c = f.read()
+            commit_path = os.path.join(working_dir, ".git/objects/" + branch_latest_c)
+
+            clear_directory(working_dir)
+
+            commit_info = read_hash(commit_path)
+            tree_hash = commit_info.split("\n")[0].split(" ")[-1]
+            tree_info = read_hash(working_dir + "/.git/objects/" + tree_hash)
+
+            reconstruct_dir(tree_info, working_dir)
+
+            with open(working_dir + "/.git/HEAD", "w") as f:
+                f.write("ref: refs/heads/" + branch)
 
 
 def reconstruct_dir(tree_info, working_dir, current_dir=None):

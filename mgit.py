@@ -60,8 +60,19 @@ def cmd_log():
     print(commands.git_log())
 
 argsp = subparsers.add_parser("checkout")
-argsp.add_argument("-c",
-                   required=True)
+argsp.add_argument("-c")
+argsp.add_argument("-b")
 
 def cmd_checkout(args):
-    commands.git_checkout(args.c)
+    # Searching for the git dir
+    working_dir = commands.find_git_dir()
+    if working_dir == None:
+        print(".git directory not found")
+        return None
+
+    if args.c is not None:
+        commands.git_checkout_c(args.c, working_dir)
+    elif args.b is not None:
+        commands.git_checkout_b(args.b, working_dir)
+    else:
+        print("Please provide an argument: -c or -b")
