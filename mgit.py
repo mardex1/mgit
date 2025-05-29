@@ -20,6 +20,7 @@ def main(argv=sys.argv[1:]):
         case "commit": cmd_commit(args)
         case "fgit": cmd_fgit()
         case "log": cmd_log()
+        case "checkout": cmd_checkout(args)
         case _: print("Bad command.")
 
 
@@ -53,8 +54,14 @@ argsp = subparsers.add_parser("init")
 def cmd_init():
     commands.git_init()
 
-
 argsp = subparsers.add_parser("log")
 
 def cmd_log():
     print(commands.git_log())
+
+argsp = subparsers.add_parser("checkout")
+argsp.add_argument("-c",
+                   required=True)
+
+def cmd_checkout(args):
+    commands.git_checkout(args.c)

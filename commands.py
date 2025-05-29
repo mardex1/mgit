@@ -1,4 +1,5 @@
 import time
+import shutil
 import zlib
 import os
 import hashlib
@@ -317,3 +318,69 @@ def format_log(commit_hash, author_date_info, msg, is_first):
     full_text = commit_line + author_line + date_line + msg_line
 
     return full_text
+
+def git_checkout(commit):
+    log_string = git_log()    
+    if commit in log_string:
+        print("Commit found!")
+    else:
+        print("Commit doesn't exist, failed")
+        return None
+
+    # Searching for the git dir
+    working_dir = find_git_dir()
+    if working_dir == None:
+        print(".git directory not found")
+        return None
+
+    # Checking if the commit i wanna checkout to is the commit im on
+    with open(working_dir + "/.git/HEAD", "r") as f:
+        head = f.read()
+
+    msg = log_string.split("\n\t")[-1]
+    print(f"HEAD is now at {commit} {msg}")
+
+    clear_directory(working_dir)
+
+    # From the commit that i want to checkout to, i wanna build the working dir
+    commit_info = read_hash(working_dir + "/.git/objects/" + commit)
+    tree_hash = commit_info.split("\n")[0].split(" ")[-1]
+    tree_info = read_hash(working_dir + "/.git/objects/" + tree_hash)
+
+    reconstruct_dir(tree_info, working_dir)
+
+
+def reconstruct_dir(tree_info, working_dir, current_dir=None):
+    for obj in tree_info.split("\n"):
+        obj_splitted = obj.split(" ")
+        if obj_splitted[1] == "blob":
+            blob_hash = obj_splitted[2]
+            blob_name = obj_splitted[3]
+            blob_content = read_hash(working_dir + "/.git/objects/" + blob_hash)
+            
+            if current_dir == None:
+                current_dir = working_dir
+
+            with open(current_dir + "/" + blob_name, "w") as f:
+                f.write(blob_content)
+        if obj_splitted[1] == "tree":
+            tree_hash = obj_splitted[2]
+            tree_name = obj_splitted[3] 
+            new_working_dir = os.path.join(working_dir, tree_name)
+            os.mkdir(new_working_dir)
+            new_tree_info = read_hash(working_dir + "/.git/objects/" + tree_hash)
+            reconstruct_dir(new_tree_info, working_dir, new_working_dir)
+
+
+def clear_directory(dir_path):
+    for item in os.listdir(dir_path):
+        if item == ".git":
+            continue
+        file_path = os.path.join(dir_path, item)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"Failed to delete {file_path}, {e}")
