@@ -21,6 +21,7 @@ def main(argv=sys.argv[1:]):
         case "fgit": cmd_fgit()
         case "log": cmd_log()
         case "checkout": cmd_checkout(args)
+        case "diff": cmd_diff(args)
         case _: print("Bad command.")
 
 
@@ -76,3 +77,15 @@ def cmd_checkout(args):
         commands.git_checkout_b(args.b, working_dir)
     else:
         print("Please provide an argument: -c or -b")
+
+
+argsp = subparsers.add_parser("diff")
+def cmd_diff(args):
+    # Searching for the git dir
+    working_dir = commands.find_git_dir()
+    if working_dir == None:
+        print(".git directory not found")
+        return None
+
+    commands.git_diff(working_dir)
+

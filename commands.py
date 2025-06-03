@@ -48,7 +48,7 @@ def create_hash_string(text):
 
     return hash_obj
     
-def create_hash_path(file_path):
+def create_hash_path(file_path, write=True):
     """Given a file, this function compress it's content, and store it on
     a file with the name equivalent to content of the file concateneted with
     the file size, in bytes"""
@@ -61,15 +61,16 @@ def create_hash_path(file_path):
 
     with open(file_path, 'r') as f:
         text = f.read()
-    bytes_compressed = zlib.compress(text.encode())
     file_size = os.path.getsize(file_path)
     
     full_text = text + str(file_size)
 
     hash_obj = hashlib.sha1(full_text.encode()).hexdigest()
-
-    with open(working_dir + "/.git/objects/" + hash_obj, 'wb') as f:
-        f.write(bytes_compressed)
+    
+    if write is True:
+        bytes_compressed = zlib.compress(text.encode())
+        with open(working_dir + "/.git/objects/" + hash_obj, 'wb') as f:
+            f.write(bytes_compressed)
     
     return hash_obj
 
@@ -406,3 +407,74 @@ def clear_directory(dir_path):
                 shutil.rmtree(file_path)
         except Exception as e:
             print(f"Failed to delete {file_path}, {e}")
+
+
+def git_diff(working_dir):
+    # Working area and staging area
+    index = read_hash(os.path.join(working_dir, ".git/index"))
+    index_splited = index.split("\n")
+
+    for file_info in index_splited:
+        file_info_splited = file_info.split(" ") 
+        file_name = file_info_splited[3]
+        file_path = os.path.join(working_dir, file_name)
+        if os.path.exists(file_path):
+            hash_working = create_hash_path(file_path, False)
+            hash_index = file_info_splited[1]
+            if hash_working == hash_index:
+                pass
+            else:
+                text_content_before = read_hash(os.path.join(working_dir, ".git/objects/", hash_index))
+                with open(file_path, "r") as f:
+                    text_content_after = f.read()
+                print(f"\033[1;36mFile {file_name}:\n\033[0m ")
+                find_diff(text_content_before, text_content_after)
+        else:
+            # File not tracked
+            pass
+
+
+def find_diff(before, after):
+    before_split = before.split("\n")
+    after_split = after.split("\n")
+    len_b = len(before_split) 
+    len_a = len(after_split)
+    c = [[0 for col in range(len_a)] for row in range(len_b)]
+    for i in range(1, len_b):
+        for j in range(1, len_a):
+            if before_split[i-1] == after_split[j-1]:
+                c[i][j] = c[i-1][j-1] + 1
+            else:
+                c[i][j] = max(c[i][j-1], c[i-1][j])
+
+    print_diff(c, before_split, after_split, len_b-1, len_a-1)
+
+
+def print_diff(c, file1, file2, i, j):
+    if len(file1) > 1 and len(file2) > 1:
+        if i >= 0 and j >= 0 and file1[i] == file2[j]:
+            print_diff(c, file1, file2, i-1, j-1)
+            print(" \t" + file1[i])
+        elif j > 0 and (i == 0 or c[i][j-1] >= c[i-1][j]):
+            print_diff(c, file1, file2, i, j-1)
+            print(f"\033[1;32m+\t{file2[j]}\033[0m")
+        elif i > 0 and (j == 0 or c[i][j-1] < c[i-1][j]):
+            print_diff(c, file1, file2, i-1, j)
+            print(f"\033[1;31m-\t{file1[i]}\033[0m")
+        else:
+            pass
+    else:
+        if i == 0:
+            temp = j
+            j = 0
+            while j < temp:
+                print(f"\033[1;32m+\t{file2[j]}\033[0m")
+                j+=1
+            print()
+        elif j == 0:
+            temp = i
+            i = 0
+            while i < temp:
+                print(f"\033[1;31m-\t{file1[i]}\033[0m")
+                i+=1
+            print()
