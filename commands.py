@@ -478,3 +478,84 @@ def print_diff(c, file1, file2, i, j):
                 print(f"\033[1;31m-\t{file1[i]}\033[0m")
                 i+=1
             print()
+
+
+def git_status(working_dir):
+    # Working area and staging area
+    index_path = os.path.join(working_dir, ".git/index")
+    if os.path.exists(index_path):
+        index = read_hash(index_path)
+        index_splited = index.split("\n")
+    else:
+        print("Untracked files: ")
+        for dirpath, dirnames, filenames in os.walk(working_dir):
+            if ".git" in dirpath:
+                continue
+            for file in filenames:
+                print(f"\033[0;31m\t{file}\033[0m")
+        return
+
+
+    head_file_path = os.path.join(working_dir, ".git", "HEAD")
+    with open(head_file_path, 'r') as f:
+        ref = f.read()
+    name_head_branch = ref.split(" ")[-1].split("/")[-1]
+
+    refs_branch_path = os.path.join(working_dir, ".git", "refs", "heads", name_head_branch)
+    if os.path.exists(refs_branch_path):
+        with open(refs_branch_path) as f:
+            commit_hash = f.read()
+    else:
+        print("Changes to be commited:")
+        for dirpath, dirnames, filenames in os.walk(working_dir):
+            if ".git" in dirpath:
+                continue
+            for file in filenames:
+                print(f"\033[0;32m\t{file}\033[0m")
+        return
+
+    # need to check if it is equal to commit
+    commit_info = read_hash(os.path.join(working_dir, ".git", "objects", commit_hash))
+    tree_hash = commit_info.split("\n")[0].split(" ")[-1]
+    tree_info = read_hash(os.path.join(working_dir, ".git", "objects", tree_hash))
+
+    not_staged = ""
+    staged_not_commited = ""
+    for file_info in index_splited:
+        file_info_splited = file_info.split(" ") 
+        file_name = file_info_splited[3]
+        file_path = os.path.join(working_dir, file_name)
+        if os.path.exists(file_path):
+            hash_working = create_hash_path(file_path, False)
+            hash_index = file_info_splited[1]
+            if hash_working != hash_index:
+                # Working and index are different
+                not_staged += f"\t\033[0;31mmodified: {file_name}\n\033[0m"
+        else:
+            not_staged += f"\t\033[0;31mdeleted: {file_name}\n\033[0m"
+        staged_not_commited += stage_commit_search(working_dir, tree_info, file_name, hash_index)
+    if len(staged_not_commited) != 0:
+        staged_not_commited = "Changes to be commited:\n" + staged_not_commited
+        print(staged_not_commited)
+    if len(not_staged) != 0:
+        not_staged = "Changes not staged for commit:\n" + not_staged 
+        print(not_staged)
+    if len(staged_not_commited) == 0 and len(not_staged) == 0:
+        print("Everything is good")
+
+
+def stage_commit_search(working_dir, tree_info, file_name, hash_index):
+    # need to check if it is equal to commit
+    s = ""
+    for obj in tree_info.split("\n"):
+        obj_splitted = obj.split(" ")
+        if obj_splitted[-1] == file_name or ("/" in file_name and file_name.split("/")[-1] == obj_splitted[-1]):
+            # check if hashes are equal
+            if obj_splitted[2] != hash_index:
+                s += f"\t\033[0;32mmodified: {file_name}\n\033[0m"
+        if "/" in file_name and obj_splitted[1] == "tree":
+            # means it is in a dict
+            tree_hash = obj_splitted[2]
+            tree_info = read_hash(os.path.join(working_dir, ".git", "objects", tree_hash))
+            s += stage_commit_search(working_dir, tree_info, file_name, hash_index)
+    return s

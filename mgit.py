@@ -22,6 +22,7 @@ def main(argv=sys.argv[1:]):
         case "log": cmd_log()
         case "checkout": cmd_checkout(args)
         case "diff": cmd_diff(args)
+        case "status": cmd_status()
         case _: print("Bad command.")
 
 
@@ -88,4 +89,14 @@ def cmd_diff(args):
         return None
 
     commands.git_diff(working_dir)
+
+argsp = subparsers.add_parser("status")
+def cmd_status():
+    # Searching for the git dir
+    working_dir = commands.find_git_dir()
+    if working_dir == None:
+        print(".git directory not found")
+        return None
+
+    commands.git_status(working_dir)
 
